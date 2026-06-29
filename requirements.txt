@@ -1,0 +1,7 @@
+# DietSupport サーバー(FastAPI / 同期・認証 API)。Python 3.9+
+# Green 化(ServerApi ロジックの pytest)に必須なのは pytest のみ。
+# fastapi/uvicorn/httpx は HTTP 層(タスク7)で使用。
+pytest>=8.0
+fastapi>=0.110
+uvicorn[standard]>=0.29
+httpx>=0.27
