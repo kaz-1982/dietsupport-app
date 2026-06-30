@@ -5,6 +5,14 @@
 
 ---
 
+## デモ
+
+<p align="center">
+  <img src="doc/image/01_demo_dietsupport.gif" alt="DietSupport の操作デモ" width="320">
+</p>
+
+---
+
 ## できること
 
 | 画面 | 何ができるか |
