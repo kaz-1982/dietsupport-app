@@ -12,6 +12,11 @@ const KIND_TO_STORE: Record<string, StoreName> = {
   dailyAchievement: 'daily_achievement',
 };
 
+// デモseedデータの端末マーカー(app/seed.ts が付与)。この deviceId が付いた行は
+// 「見栄え用のローカル専用デモ」なので、同期 push でサーバー/他端末へ出さない。
+// 本物のアカウントにデモが混入しないことを構造的に保証する。
+export const DEMO_DEVICE_ID = 'seed';
+
 // 端末識別子(同期メタ device_id)。ApiClient と同じ localStorage キーを共有。
 function deviceId(): string {
   let id = localStorage.getItem('deviceId');
@@ -154,7 +159,10 @@ export class IndexedDbRepository {
     const all = await this.getAllIncludingDeleted();
     const changes: Record<string, any[]> = {};
     for (const [table, rows] of Object.entries(all)) {
-      const ch = rows.filter((r: any) => !since || (r.updatedAt && r.updatedAt > since)).map((r) => toServerRow(r, table, acct));
+      const ch = rows
+        .filter((r: any) => r.deviceId !== DEMO_DEVICE_ID) // デモseedはローカル専用: サーバーへ出さない
+        .filter((r: any) => !since || (r.updatedAt && r.updatedAt > since))
+        .map((r) => toServerRow(r, table, acct));
       if (ch.length) changes[table] = ch;
     }
     return changes;

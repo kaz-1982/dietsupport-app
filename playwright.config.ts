@@ -23,7 +23,8 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: 'npm run dev',
+      // E2E は固定メニュー等のシードに依存するためデモデータを有効化して起動する。
+      command: 'VITE_DEMO_DATA=on npm run dev',
       url: 'http://localhost:5173',
       reuseExistingServer: true,
       timeout: 60_000,

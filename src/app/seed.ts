@@ -1,7 +1,7 @@
 // 初回起動時のサンプルデータ投入。内容はモック(support.js)の sample data を「正」として踏襲。
 // 体重履歴と過去の達成は、グラフ/カレンダー/ストリークが最初から「生きて」見えるように入れる。
 // (現在ストリーク=23 / 最長=31 になるよう、24・25日前に意図的な抜けを作る)
-import { repository } from '../infrastructure/repository';
+import { repository, DEMO_DEVICE_ID } from '../infrastructure/repository';
 import { todayISO, nPrev } from './date';
 
 export const FIXED_MENUS = [
@@ -55,13 +55,14 @@ const WEIGHT_HIST = [
   69.1, 68.9, 69.0, 69.2,
 ];
 
-const DEMO_DEVICE = 'seed';
+const DEMO_DEVICE = DEMO_DEVICE_ID;
 // デモ履歴の対象(日付ベース)テーブル。実記録の有無判定に使う。
 const DATE_TABLES = ['weight_record', 'meal_record', 'workout_record', 'daily_achievement'] as const;
 
-// 本運用向けスイッチ: VITE_DEMO_DATA=off で「見栄え用のデモ履歴(過去の体重/達成)」を
-// 投入しない。固定メニュー・種目・目標・通知などの初期マスタは入る(アプリ動作に必要)。
-const DEMO_DISABLED = (import.meta as any).env?.VITE_DEMO_DATA === 'off';
+// デモは明示オプトイン: VITE_DEMO_DATA=on のときだけサンプル(固定メニュー・履歴など)を
+// 投入する。既定(未設定/off)は「完全に空」で開始する本運用モード。
+// これによりデモが本物のアカウントへ紛れ込むことがない(デモを見たい時だけ on で起動する)。
+const DEMO_ENABLED = (import.meta as any).env?.VITE_DEMO_DATA === 'on';
 
 let seedPromise: Promise<void> | null = null;
 
@@ -116,9 +117,9 @@ async function runSeed(): Promise<void> {
 
   const today = todayISO();
 
-  // 本運用(VITE_DEMO_DATA=off): サンプルは一切投入せず「完全に空」で開始する。
-  // 固定メニュー・種目・予定・目標・通知リマインダー・履歴のすべてを入れない。
-  if (!DEMO_DISABLED) {
+  // 既定(本運用): サンプルは一切投入せず「完全に空」で開始する。
+  // 固定メニュー・種目・予定・目標・通知リマインダー・履歴は VITE_DEMO_DATA=on の時だけ入れる。
+  if (DEMO_ENABLED) {
     await repository.save('fixedMenu', FIXED_MENUS);
     await repository.save('eating_out_item', EATING_OUT);
     await repository.save('exercise', EXERCISES);
@@ -137,7 +138,7 @@ async function runSeed(): Promise<void> {
 // ・実記録(seed 以外)が1件でもあればデモには触れない(実記録が正)。
 // ・旧デモ行は論理削除して削除を同期で伝播 → today 基準で再生成(端末間で復活させない)。
 export async function refreshDemoIfStale(): Promise<void> {
-  if (DEMO_DISABLED) return; // 本運用: デモ履歴は投入しないので再生成も不要
+  if (!DEMO_ENABLED) return; // 本運用: デモ履歴は投入しないので再生成も不要
   if (!(await repository.getMeta('seeded'))) return; // 未 seed は対象外
   if (await repository.getMeta('demoCleared')) return; // ユーザーが全削除済みなら復活させない
   const anchor = await repository.getMeta('seedAnchor');
