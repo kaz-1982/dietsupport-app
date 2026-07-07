@@ -50,10 +50,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # cache: pip は付けない(placeholder 段階では pip install が無く、post-run の
+      # キャッシュ保存が「対象なし」で job を赤にするため)。実配送実装時に再付与する。
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: 'pip'
 
       # TODO: deploy to <サーバーホスティングサービス>(候補: Fly.io / Render / Railway / VPS)
       # デプロイ先は B-17 §7 の TBD。確定後にこの step を実装する。
