@@ -1,0 +1,125 @@
+# SCA 週次実行(設計: docs/CI-CD/B-17_addendum_4.7_CICD.md §4.7.3.3、B-19_addendum_secrets.md §4.x.6 / CR-001)
+# 月曜 09:00 JST(= UTC 月曜 00:00)に npm audit / pip-audit を実行し、
+# 検知時は GitHub Issue を自動起票する(本人が5営業日以内にトリアージ)。
+name: SCA (weekly)
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # UTC 月曜 00:00 = JST 月曜 09:00
+  workflow_dispatch: # 手動実行可(AT-026 の動作確認にも使用)
+
+# GITHUB_TOKEN は最小権限 + Issue 起票のみ許可(B-19 追補 §4.x.4.1)
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: sca-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: npm audit (high 以上)
+        id: audit
+        run: |
+          set +e
+          npm audit --audit-level=high --json > npm-audit.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          # ログにはサマリのみ残す(json 全文は Issue 起票判断用)
+          npm audit --audit-level=high || true
+
+      - name: 脆弱性検知時に Issue 起票
+        if: steps.audit.outputs.exit_code != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const date = new Date().toISOString().slice(0, 10);
+            let summary = '(npm-audit.json の解析に失敗。Actions ログを参照)';
+            try {
+              const audit = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
+              const v = audit.metadata?.vulnerabilities ?? {};
+              summary = `high: ${v.high ?? 0} / critical: ${v.critical ?? 0}`;
+            } catch (e) {}
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[SCA] frontend high vulnerabilities detected (${date})`,
+              body: [
+                '`npm audit --audit-level=high` が high 以上の脆弱性を検知しました。',
+                '',
+                `- 検知サマリ: ${summary}`,
+                `- 実行ログ: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                '',
+                '**対応**: 5営業日以内にトリアージ(修正 / 見送り / 別バージョン)— B-19 追補 §4.x.6',
+              ].join('\n'),
+              labels: ['security', 'sca'],
+            });
+
+      - name: 検知時は job を赤にする
+        if: steps.audit.outputs.exit_code != '0'
+        run: exit 1
+
+  audit-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install + pip-audit
+        id: audit
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+          pip install pip-audit
+          set +e
+          pip-audit --format json > pip-audit.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          # ログには人間可読の結果も残す
+          pip-audit || true
+
+      - name: 脆弱性検知時に Issue 起票
+        if: steps.audit.outputs.exit_code != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const date = new Date().toISOString().slice(0, 10);
+            let summary = '(pip-audit.json の解析に失敗。Actions ログを参照)';
+            try {
+              const audit = JSON.parse(fs.readFileSync('pip-audit.json', 'utf8'));
+              const deps = (audit.dependencies ?? []).filter(d => (d.vulns ?? []).length > 0);
+              summary = deps.map(d => `${d.name} ${d.version}: ${d.vulns.map(v => v.id).join(', ')}`).join(' / ') || '詳細はログ参照';
+            } catch (e) {}
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[SCA] backend high vulnerabilities detected (${date})`,
+              body: [
+                '`pip-audit` が脆弱性を検知しました。',
+                '(pip-audit は severity 閾値指定が無いため、検知した全件を起票対象とする=設計より安全側)',
+                '',
+                `- 検知サマリ: ${summary}`,
+                `- 実行ログ: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                '',
+                '**対応**: 5営業日以内にトリアージ(修正 / 見送り / 別バージョン)— B-19 追補 §4.x.6',
+              ].join('\n'),
+              labels: ['security', 'sca'],
+            });
+
+      - name: 検知時は job を赤にする
+        if: steps.audit.outputs.exit_code != '0'
+        run: exit 1

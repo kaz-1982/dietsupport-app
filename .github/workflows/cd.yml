@@ -1,0 +1,73 @@
+# CD パイプライン(設計: docs/CI-CD/B-17_addendum_4.7_CICD.md §4.7.3.2 / CR-001)
+# main への push で起動。実配送先は TBD(B-17 §7)のため placeholder。
+# 配送先確定時に # TODO: の箇所を実装し、必要なら permissions に最小権限を追加する
+# (例: OIDC 認証を使う場合のみ id-token: write)。
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+# GITHUB_TOKEN は最小権限(B-19 追補 §4.x.4.1)。
+# TODO: デプロイ先確定時、OIDC を使う場合のみ `id-token: write` を追加(理由をコミットメッセージに記録)
+permissions:
+  contents: read
+
+# 進行中のデプロイは中断しない(§4.7.3.2)
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install (lockfile 厳格)
+        run: npm ci
+
+      - name: Build (Vite 本番ビルド)
+        run: npm run build
+
+      # TODO: deploy to <静的ホスティングサービス>(候補: Vercel / Cloudflare Pages / GitHub Pages)
+      # デプロイ先は B-17 §7 の TBD。確定後にこの step を実装する。
+      # 資格情報は secrets.DEPLOY_TOKEN_FRONTEND を参照する(YAML への直書き禁止 / B-19 追補 §4.x.3)。
+      - name: Deploy frontend (placeholder)
+        env:
+          DEPLOY_TOKEN_FRONTEND: ${{ secrets.DEPLOY_TOKEN_FRONTEND }}
+        run: |
+          echo "TODO: dist/ を静的ホスティングへデプロイする(配送先 TBD: B-17 §7)"
+          echo "資格情報は DEPLOY_TOKEN_FRONTEND を使用予定(値はログに出力しない)"
+
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      # TODO: deploy to <サーバーホスティングサービス>(候補: Fly.io / Render / Railway / VPS)
+      # デプロイ先は B-17 §7 の TBD。確定後にこの step を実装する。
+      # 以下の secrets はデプロイ時に「サーバー環境変数」として注入する(B-19 追補 §4.x.8)。
+      #   PROD_JWT_SECRET      → DIETSUPPORT_JWT_SECRET
+      #   PROD_DATABASE_URL    → DIETSUPPORT_DATABASE_URL
+      #   PROD_ALLOWED_ORIGINS → DIETSUPPORT_ALLOWED_ORIGINS
+      # コードや lockfile への埋め込みは絶対禁止。
+      - name: Deploy backend (placeholder)
+        env:
+          DEPLOY_TOKEN_BACKEND: ${{ secrets.DEPLOY_TOKEN_BACKEND }}
+          PROD_JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          PROD_ALLOWED_ORIGINS: ${{ secrets.PROD_ALLOWED_ORIGINS }}
+        run: |
+          echo "TODO: server/ を FastAPI ホスティングへデプロイ + 再起動する(配送先 TBD: B-17 §7)"
+          echo "secrets はサーバー環境変数として注入予定(値はログに出力しない)"

@@ -1,0 +1,26 @@
+# Dependabot 設定(設計: docs/CI-CD/B-17_addendum_4.7_CICD.md §4.7.4 / CR-001)
+# 齟齬対応: 設計は pip の directory を "/server" としているが、実際の requirements.txt は
+# リポジトリルート直下にあるため "/" とする(実装報告に記載済み)。
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
