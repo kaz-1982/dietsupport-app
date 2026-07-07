@@ -1,0 +1,73 @@
+# CI パイプライン(設計: docs/CI-CD/B-17_addendum_4.7_CICD.md §4.7.3.1 / CR-001)
+# frontend / backend を並列実行。どちらか赤で PR はマージ不可(ブランチ保護の必須チェック)。
+# 実行時間目標: 合計 5 分以内(R-NF-022)
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: ['**']
+
+# GITHUB_TOKEN は最小権限(B-19 追補 §4.x.4.1)
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install (lockfile 厳格)
+        run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Typecheck (tsc)
+        run: npm run typecheck
+
+      - name: Unit tests (Vitest)
+        run: npm run test:unit
+
+      - name: Build (Vite)
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Typecheck (mypy)
+        run: mypy server/
+
+      - name: Tests (pytest)
+        run: pytest -q

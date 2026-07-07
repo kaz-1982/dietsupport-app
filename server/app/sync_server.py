@@ -126,7 +126,7 @@ class ServerApi:
         self._db = sqlite3.connect(db_path, check_same_thread=False)
         self._db.row_factory = sqlite3.Row
         self._lock = threading.Lock()
-        self._failed = {}  # email -> list[float] 直近の失敗時刻(時間窓で失効・揮発)
+        self._failed: dict[str, list[float]] = {}  # email -> 直近の失敗時刻(時間窓で失効・揮発)
         self._init_schema()
         self._seed()
 
