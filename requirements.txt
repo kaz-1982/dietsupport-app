@@ -3,5 +3,5 @@
 # fastapi/uvicorn/httpx は HTTP 層(タスク7)で使用。
 pytest>=8.0
 fastapi>=0.110
-uvicorn[standard]>=0.29
+uvicorn[standard]>=0.50.2
 httpx>=0.27
