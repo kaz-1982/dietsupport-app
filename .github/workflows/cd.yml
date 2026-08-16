@@ -52,7 +52,7 @@ jobs:
 
       # cache: pip は付けない(placeholder 段階では pip install が無く、post-run の
       # キャッシュ保存が「対象なし」で job を赤にするため)。実配送実装時に再付与する。
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
