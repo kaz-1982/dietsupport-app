@@ -53,12 +53,13 @@
 ```bash
 # 依存(初回)
 npm install
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+uv venv                               # .python-version(3.12)に従い CI と同じ Python で .venv を作成
+uv pip install -r requirements.txt -r requirements-dev.txt
 npx playwright install chromium      # E2E用(初回)
 
 # テスト
 npm test                              # Vitest 66(Domain/Application/UI/受け入れ)
-.venv/bin/pytest                      # pytest 19(サーバーAPI/受け入れ)
+.venv/bin/pytest                      # pytest 32(サーバーAPI/受け入れ)
 npm run test:e2e                      # Playwright 8(webServerが uvicorn+vite を自動起動)
 npm run build                         # tsc -b + vite build(PWA)
 
@@ -67,6 +68,9 @@ PYTHONPATH=. .venv/bin/uvicorn server.app.main:app --port 8000   # バックエ�
 npm run dev                                                       # フロント(HMR) → http://localhost:5173
 npm run build && npm run preview                                  # もしくは 本番ビルドをローカル配信(インストール可能なPWA) → http://localhost:4173
 ```
+- **Python は uv で管理する**([uv](https://docs.astral.sh/uv/) 必須)。`.python-version` に `3.12` を置いてあり、`uv venv` が CI(`ci.yml` backend job)と同じ 3.12 を選ぶ。
+  - **`python3 -m venv .venv` は使わない**。macOS の `python3` は系統上 `/usr/bin/python3`(3.9)を先に拾うため、CI より古い依存しか入らず「ローカルは緑だが CI は赤」を招く。`requirements-dev.txt` が固定している `mypy==2.3.1` は 3.9 に入らない。
+  - uv 未導入なら `curl -LsSf https://astral.sh/uv/install.sh | sh`。
 - シードアカウント: `me@example.com` / `correct-horse`(acct_me)。
 - `dev`(:5173)も `preview`(:4173)も Vite が `/api` を `:8000` にプロキシ(`vite.config.ts` の `server.proxy` / `preview.proxy`)。ブラウザからは同一オリジンのため CORS 不要。
 - ローカル利用なら公開デプロイは不要(§5.A は外部公開時のみ)。`localhost` は SW/PWAインストール可。
