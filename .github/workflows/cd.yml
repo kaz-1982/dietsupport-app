@@ -22,7 +22,7 @@ jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -48,7 +48,7 @@ jobs:
   deploy-backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # cache: pip は付けない(placeholder 段階では pip install が無く、post-run の
       # キャッシュ保存が「対象なし」で job を赤にするため)。実配送実装時に再付与する。
